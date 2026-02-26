@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
-// Importando os componentes (vamos criá-los abaixo)
+// Importando os componentes
 import ClientSection from "@/components/orcamento/ClientSection";
 import ProductsSection from "@/components/orcamento/ProductsSection";
 import ConditionsSection from "@/components/orcamento/ConditionsSection";
@@ -15,7 +15,7 @@ import { ItemProduto, ItemCondicao, ItemObservacao } from "@/types/orcamento";
 export default function OrcamentoPage() {
   const [isGerando, setIsGerando] = useState(false);
 
-  // --- ESTADOS DO FORMULÁRIO (O que antes ficava solto no HTML) ---
+  // --- ESTADOS DO FORMULÁRIO ---
   const [clienteNome, setClienteNome] = useState("");
   const [vendedor, setVendedor] = useState("");
 
@@ -23,15 +23,25 @@ export default function OrcamentoPage() {
     { id: "inicial", nomeCompleto: "", quantidade: 1, valorUnitario: 0 },
   ]);
 
-  const [condicoes, setCondicoes] = useState<ItemCondicao[]>([]);
+  // Inicia com 1 condição padrão na tela
+  const [condicoes, setCondicoes] = useState<ItemCondicao[]>([
+    { id: "inicial", texto: "", valor: 0 },
+  ]);
+
   const [observacoes, setObservacoes] = useState<ItemObservacao[]>([]);
+
+  // CALCULA O TOTAL GERAL (Soma de todos os produtos)
+  const totalGeral = (produtos || []).reduce(
+    (acc, p) => acc + p.quantidade * p.valorUnitario,
+    0,
+  );
 
   // --- FUNÇÃO DE ENVIO ---
   async function handleGerarOrcamento(e: FormEvent) {
     e.preventDefault();
     setIsGerando(true);
 
-    // Monta o objeto exatamente como a sua API (antigo FormData) espera
+    // Monta o objeto garantindo que a primeira condição leve o total geral calculado
     const payload = {
       cliente_nome: clienteNome,
       vendedor: vendedor,
@@ -39,12 +49,12 @@ export default function OrcamentoPage() {
       quantidade: produtos.map((p) => p.quantidade),
       valor_unitario: produtos.map((p) => p.valorUnitario),
       condicao_pagamento: condicoes.map((c) => c.texto),
-      valor_condicao: condicoes.map((c) => c.valor),
+      // Regra: se for o primeiro item da lista (índice 0), envia o totalGeral
+      valor_condicao: condicoes.map((c, i) => (i === 0 ? totalGeral : c.valor)),
       observacao: observacoes.map((o) => o.texto),
     };
 
     try {
-      // Faz a chamada para a nossa nova API do Next.js
       const response = await fetch("/api/documentos/orcamento", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -53,7 +63,6 @@ export default function OrcamentoPage() {
 
       if (!response.ok) throw new Error("Erro ao gerar PDF");
 
-      // Lógica para fazer o download do PDF recebido
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -102,6 +111,7 @@ export default function OrcamentoPage() {
             setVendedor={setVendedor}
             condicoes={condicoes}
             setCondicoes={setCondicoes}
+            totalGeral={totalGeral}
           />
 
           {/* 4. OBSERVAÇÕES */}

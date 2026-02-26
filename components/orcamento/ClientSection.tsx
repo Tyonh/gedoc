@@ -45,7 +45,7 @@ export default function ClientSection({ clienteNome, setClienteNome }: Props) {
       setCarregando(true);
       try {
         const res = await fetch(
-          `/api/clientes/search?search=${encodeURIComponent(clienteNome)}`,
+          `/api/clientes?search=${encodeURIComponent(clienteNome)}`,
         );
         if (res.ok) {
           const data = await res.json();
